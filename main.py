@@ -46,7 +46,7 @@ def extract_letter_entries(letter):
     url = API.format(letter)
     attempt = 0
     while url:
-        print(url)
+        print(f"[{letter}] {url}")  # Print URL with letter prefix
         response = urllib.request.urlopen(url)
         code = response.getcode()
         if code == 200:
@@ -55,7 +55,7 @@ def extract_letter_entries(letter):
             url = get_next(content)
             attempt = 0
         else:
-            print(f"Trying again, expected response code: 200, got {code}")
+            print(f"[{letter}] Trying again, expected response code: 200, got {code}")
             attempt += 1
             if attempt > MAX_ATTEMPTS:
                 break
@@ -72,6 +72,7 @@ letters = list(string.ascii_uppercase) + ["#"]
 
 
 def download_letter_entries(letter, file, remove_dead):
+    start_time = time.time()
     file = file.format(letter)
     entries = itertools.chain.from_iterable(list(extract_letter_entries(letter)))
 
@@ -83,10 +84,13 @@ def download_letter_entries(letter, file, remove_dead):
                 old_data = [line.strip() for line in f.readlines()]
             all_data = sorted(set(old_data).union(set(entries)), key=str.casefold)
         except FileNotFoundError:
-            all_data = entries  # If the file doesn't exist, just use the new entries
+            all_data = entries
 
     with open(file, "w", encoding="utf-8") as f:
         f.write("\n".join(all_data) + "\n")
+
+    end_time = time.time()
+    print(f"[{letter}] Finished in {end_time - start_time:.2f} seconds")
 
 
 def download_entries(letters, file, remove_dead, max_workers):
@@ -96,7 +100,7 @@ def download_entries(letters, file, remove_dead, max_workers):
             for letter in letters
         ]
         for future in as_completed(futures):
-            print(f"Finished downloading entries for a letter")  # No need for letter here
+            pass  # Detailed output is handled in download_letter_entries
 
 
 parser = argparse.ArgumentParser(description="Download urban dictionary words.")
@@ -126,7 +130,7 @@ parser.add_argument(
 parser.add_argument(
     "--max-workers",
     type=int,
-    default=10,  # Increased default worker count
+    default=20,
     help="Maximum number of threads to use for downloading",
 )
 
