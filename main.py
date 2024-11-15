@@ -3,6 +3,7 @@ import itertools
 import string
 import time
 import urllib.request
+from concurrent.futures import ThreadPoolExecutor, as_completed
 
 from bs4 import BeautifulSoup
 
@@ -77,18 +78,25 @@ def download_letter_entries(letter, file, remove_dead):
     if remove_dead:
         all_data = entries
     else:
-        with open(file, "r", encoding="utf-8") as f:
-            old_data = [line.strip() for line in f.readlines()]
-        all_data = sorted(set(old_data).union(set(entries)), key=str.casefold)
+        try:
+            with open(file, "r", encoding="utf-8") as f:
+                old_data = [line.strip() for line in f.readlines()]
+            all_data = sorted(set(old_data).union(set(entries)), key=str.casefold)
+        except FileNotFoundError:
+            all_data = entries  # If the file doesn't exist, just use the new entries
 
     with open(file, "w", encoding="utf-8") as f:
         f.write("\n".join(all_data) + "\n")
 
 
-def download_entries(letters, file, remove_dead):
-    for letter in letters:
-        print(f"======={letter}=======")
-        download_letter_entries(letter, file, remove_dead)
+def download_entries(letters, file, remove_dead, max_workers):
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+        futures = [
+            executor.submit(download_letter_entries, letter, file, remove_dead)
+            for letter in letters
+        ]
+        for future in as_completed(futures):
+            print(f"Finished downloading entries for a letter")  # No need for letter here
 
 
 parser = argparse.ArgumentParser(description="Download urban dictionary words.")
@@ -115,6 +123,13 @@ parser.add_argument(
     "--remove-dead", action="store_true", help="Removes entries that no longer exist."
 )
 
+parser.add_argument(
+    "--max-workers",
+    type=int,
+    default=10,  # Increased default worker count
+    help="Maximum number of threads to use for downloading",
+)
+
 args = parser.parse_args()
 
 letters = [letter.upper() for letter in args.letters]
@@ -123,4 +138,4 @@ if not letters:
         for row in ifile:
             letters.append(row.strip())
 
-download_entries(letters, args.out, args.remove_dead)
+download_entries(letters, args.out, args.remove_dead, args.max_workers)
