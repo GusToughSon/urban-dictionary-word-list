@@ -122,7 +122,7 @@ class App(tk.Tk):
     def __init__(self, letters, file, remove_dead, max_workers):
         super().__init__()
         self.title("Urban Dictionary Scraper")
-        self.geometry("500x400")  # Adjust window size as needed
+        self.geometry("500x650")  # Adjust window size as needed
 
         self.letters = letters
         self.file = file
